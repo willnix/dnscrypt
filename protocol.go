@@ -35,35 +35,45 @@ func GetValidCert(serverAddress string, providerName string, providerKey []byte)
 	if len(in.Answer) == 0 {
 		return SignedBincertFields{}, errors.New("No answer to pubkey DNS request")
 	}
-	t, ok := in.Answer[0].(*dns.TXT)
-	if !ok {
-		return SignedBincertFields{}, errors.New("First answer not a TXT record")
-	}
 
-	// check for magic Bytes
-	if t.Txt[0][0:5] == certificateMagic {
-		return SignedBincertFields{}, errors.New("TXT record is not a DNSC certificate")
-	}
+	var bincert *SignedBincert
+	for _, answer := range in.Answer {
+		t, ok := answer.(*dns.TXT)
+		if !ok {
+			return SignedBincertFields{}, errors.New("First answer not a TXT record")
+		}
 
-	// decode weird TXT record representation
-	unpackedBinCert, err := unpackTXT([]byte(t.Txt[0]))
-	if err != nil {
-		return SignedBincertFields{}, err
-	}
+		// check for magic Bytes
+		if t.Txt[0][0:5] == certificateMagic {
+			return SignedBincertFields{}, errors.New("TXT record is not a DNSC certificate")
+		}
 
-	// parse outer structure for signature verification
-	buf := bytes.NewReader(unpackedBinCert)
-	bincert := SignedBincert{}
-	err = binary.Read(buf, binary.BigEndian, &bincert)
-	if err != nil {
-		return SignedBincertFields{}, err
-	}
+		// decode weird TXT record representation
+		unpackedBinCert, err := unpackTXT([]byte(t.Txt[0]))
+		if err != nil {
+			return SignedBincertFields{}, err
+		}
 
-	// Version indicates which crypto construction to use
-	// For X25519-XSalsa20Poly1305, <es-version> must be 0x00 0x01.
-	// For X25519-XChacha20Poly1305, <es-version> must be 0x00 0x02.
-	if bincert.VersionMinor != 0x01 {
-		return SignedBincertFields{}, errors.New("Only X25519-XSalsa20Poly13055 is supported")
+		// parse outer structure for signature verification
+		buf := bytes.NewReader(unpackedBinCert)
+		bincert = new(SignedBincert)
+		err = binary.Read(buf, binary.BigEndian, bincert)
+		if err != nil {
+			return SignedBincertFields{}, err
+		}
+
+		// Version indicates which crypto construction to use
+		// For X25519-XSalsa20Poly1305, <es-version> must be 0x00 0x01.
+		// For X25519-XChacha20Poly1305, <es-version> must be 0x00 0x02.
+		if bincert.VersionMajor != 0x01 {
+			// we do not support this version, look further
+			bincert = nil
+			continue
+		}
+	}
+	// have we found a supported certificate?
+	if bincert == nil {
+		return SignedBincertFields{}, errors.New("No certificate for supported crypto constructions found")
 	}
 
 	// check signature
@@ -73,7 +83,7 @@ func GetValidCert(serverAddress string, providerName string, providerKey []byte)
 	}
 
 	// parse inner structure to get pubkey, validity dates, etc.
-	buf = bytes.NewReader(bincert.SignedData[:])
+	buf := bytes.NewReader(bincert.SignedData[:])
 	bincertFields := SignedBincertFields{}
 	err = binary.Read(buf, binary.BigEndian, &bincertFields)
 	if err != nil {
