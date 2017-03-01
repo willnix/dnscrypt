@@ -10,7 +10,7 @@ type SignedBincertFields struct {
 }
 
 // SignedBincert Represents the structure of a DNSC certificate as needed to verify the signature
-type SignedBincert struct {
+type signedBincert struct {
 	MagicCert    [4]byte
 	VersionMajor uint16
 	VersionMinor uint16
@@ -21,14 +21,14 @@ type SignedBincert struct {
 }
 
 // DNSCryptQueryHeader represents the header of a DNSC encrypted query
-type DNSCryptQueryHeader struct {
+type dnsCryptQueryHeader struct {
 	ClientMagic     [8]byte
 	ClientPublicKey [32]byte
 	ClientNonce     [12]byte
 }
 
 // DNSCryptQueryHeader represents the header of a DNSC encrypted reply
-type DNSCryptResponseHeader struct {
+type dnsCryptResponseHeader struct {
 	ServerMagic [8]byte
 	ClientNonce [12]byte
 	ServerNonce [12]byte
