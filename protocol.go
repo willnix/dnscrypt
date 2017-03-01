@@ -101,7 +101,7 @@ func GetValidCert(serverAddress string, providerName string, providerKey []byte)
 
 // ExchangeEncrypted exchanges encrypted dns query and returns the response message.
 // It needs the specifics of a DNSC server as obtained by calling GetValidCert()
-func ExchangeEncrypted(msg dns.Msg, bincertFields SignedBincertFields) (dns.Msg, error) {
+func ExchangeEncrypted(serverAddress string, msg dns.Msg, bincertFields SignedBincertFields) (dns.Msg, error) {
 	// TODO: the following will be wrapped in a lookUP() function
 	queryHeader := DNSCryptQueryHeader{
 		ClientMagic: bincertFields.MagicQuery,
