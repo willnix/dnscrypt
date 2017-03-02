@@ -36,7 +36,7 @@ func GetValidCert(serverAddress string, providerName string, providerKey []byte)
 		return SignedBincertFields{}, errors.New("No answer to pubkey DNS request")
 	}
 
-	var bincert *SignedBincert
+	var bincert *signedBincert
 	for _, answer := range in.Answer {
 		t, ok := answer.(*dns.TXT)
 		if !ok {
@@ -56,7 +56,7 @@ func GetValidCert(serverAddress string, providerName string, providerKey []byte)
 
 		// parse outer structure for signature verification
 		buf := bytes.NewReader(unpackedBinCert)
-		bincert = new(SignedBincert)
+		bincert = new(signedBincert)
 		err = binary.Read(buf, binary.BigEndian, bincert)
 		if err != nil {
 			return SignedBincertFields{}, err
@@ -113,7 +113,7 @@ func GetValidCert(serverAddress string, providerName string, providerKey []byte)
 // It needs the specifics of a DNSC server as obtained by calling GetValidCert()
 func ExchangeEncrypted(serverAddress string, msg dns.Msg, bincertFields SignedBincertFields) (dns.Msg, error) {
 	// TODO: the following will be wrapped in a lookUP() function
-	queryHeader := DNSCryptQueryHeader{
+	queryHeader := dnsCryptQueryHeader{
 		ClientMagic: bincertFields.MagicQuery,
 	}
 	// Client Nonce
@@ -170,7 +170,7 @@ func ExchangeEncrypted(serverAddress string, msg dns.Msg, bincertFields SignedBi
 
 	// parse response header
 	responseHeaderBytes := bytes.NewBuffer(p[:32])
-	var responseHeader DNSCryptResponseHeader
+	var responseHeader dnsCryptResponseHeader
 	err = binary.Read(responseHeaderBytes, binary.BigEndian, &responseHeader)
 	if err != nil {
 		return dns.Msg{}, err
